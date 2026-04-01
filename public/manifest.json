@@ -1,0 +1,10 @@
+{
+  "name": "Cold Stone Checklist",
+  "short_name": "CS Checklist",
+  "description": "Employee task checklist for Cold Stone Creamery",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#7B2D26",
+  "icons": []
+}

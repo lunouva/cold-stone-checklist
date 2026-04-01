@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-csc-red: #7B2D26;
+  --color-csc-red-light: #A13D34;
+  --color-csc-cream: #FFF8F0;
+  --color-csc-brown: #4A2C2A;
+  --color-csc-gold: #C4942E;
+  --color-temp-cold: #3B82F6;
+  --color-temp-ok: #22C55E;
+  --color-temp-warn: #EAB308;
+  --color-temp-danger: #EF4444;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-csc-cream);
+  color: var(--color-csc-brown);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide scrollbar on PIN keypad */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
