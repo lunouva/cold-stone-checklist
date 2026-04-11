@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Admin() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [overview, setOverview] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadOverview()
-  }, [])
+  }, [location.key])
 
   async function loadOverview() {
     setLoading(true)

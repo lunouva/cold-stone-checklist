@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function AdminHistory() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0])
   const [expandedSession, setExpandedSession] = useState(null)
   const [sessionDetails, setSessionDetails] = useState({})
 
-  useEffect(() => { loadHistory() }, [dateFilter])
+  useEffect(() => { loadHistory() }, [dateFilter, location.key])
 
   async function loadHistory() {
     setLoading(true)

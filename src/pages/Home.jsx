@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -14,14 +14,15 @@ const CHECKLIST_ICONS = {
 export default function Home() {
   const { employee } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [checklists, setChecklists] = useState([])
   const [sessions, setSessions] = useState([])
   const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (employee) loadData()
+  }, [employee, location.key])
 
   async function loadData() {
     setLoading(true)
