@@ -7,7 +7,7 @@ export default function AdminEmployees() {
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({ name: '', pin: '', role: 'crew' })
+  const [formData, setFormData] = useState({ name: '', email: '', role: 'crew' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -22,16 +22,12 @@ export default function AdminEmployees() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (formData.pin.length !== 4 || !/^\d{4}$/.test(formData.pin)) {
-      setError('PIN must be exactly 4 digits')
-      return
-    }
     setSaving(true)
     setError(null)
 
-    const { error: insertError } = await supabase.rpc('create_employee', {
+    const { error: insertError } = await supabase.rpc('create_employee_profile', {
       emp_name: formData.name.trim(),
-      emp_pin: formData.pin,
+      emp_email: formData.email.trim(),
       emp_role: formData.role
     })
 
@@ -41,7 +37,7 @@ export default function AdminEmployees() {
       return
     }
 
-    setFormData({ name: '', pin: '', role: 'crew' })
+    setFormData({ name: '', email: '', role: 'crew' })
     setShowForm(false)
     setSaving(false)
     loadEmployees()
@@ -52,14 +48,16 @@ export default function AdminEmployees() {
     loadEmployees()
   }
 
-  async function resetPin(emp) {
-    const newPin = prompt(`Enter new 4-digit PIN for ${emp.name}:`)
-    if (!newPin || newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-      if (newPin !== null) alert('PIN must be exactly 4 digits')
+  async function updateEmail(emp) {
+    const newEmail = prompt(`Enter login email for ${emp.name}:`, emp.email || '')
+    if (newEmail === null) return
+    const trimmed = newEmail.trim()
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      alert('Enter a valid email address')
       return
     }
-    await supabase.rpc('update_employee_pin', { emp_id: emp.id, new_pin: newPin })
-    alert('PIN updated!')
+    await supabase.from('employees').update({ email: trimmed.toLowerCase() }).eq('id', emp.id)
+    loadEmployees()
   }
 
   return (
@@ -90,12 +88,10 @@ export default function AdminEmployees() {
             className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-csc-gold/50"
           />
           <input
-            type="text"
-            placeholder="4-digit PIN"
-            value={formData.pin}
-            onChange={e => setFormData(d => ({ ...d, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-            inputMode="numeric"
-            maxLength={4}
+            type="email"
+            placeholder="Login Email"
+            value={formData.email}
+            onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
             required
             className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-csc-gold/50"
           />
@@ -130,12 +126,13 @@ export default function AdminEmployees() {
               <div className="flex-1">
                 <p className="font-medium text-sm text-csc-brown">{emp.name}</p>
                 <p className="text-xs text-csc-brown/50 capitalize">{emp.role}</p>
+                <p className="text-xs text-csc-brown/40">{emp.email || 'No login email set'}</p>
               </div>
               <button
-                onClick={() => resetPin(emp)}
+                onClick={() => updateEmail(emp)}
                 className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
               >
-                Reset PIN
+                Email
               </button>
               <button
                 onClick={() => toggleActive(emp)}

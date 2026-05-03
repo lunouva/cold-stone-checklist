@@ -62,7 +62,12 @@ where not exists (
   where ci.section_id = sm.section_id and ci.label = v.label
 );
 
-select public.create_employee('Owner', '1234', 'owner')
+select public.create_employee_profile('Owner', 'owner@example.com', 'owner')
 where not exists (
   select 1 from public.employees where name = 'Owner'
 );
+
+update public.employees
+set email = 'owner@example.com'
+where name = 'Owner'
+  and email is null;

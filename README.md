@@ -19,16 +19,19 @@ Employee checklist webapp for Cold Stone Creamery.
    npm install
    npm run dev
    ```
-6. Login with starter PIN:
-   - Owner / `1234`
+6. In Supabase Authentication, enable Email auth and Google auth.
+7. Add the deployed site URL to Authentication > URL Configuration > Redirect URLs.
+8. Create the first owner auth account with `owner@example.com`, then change that employee email in the app to the real owner email.
+9. Create or update employees in the app with their login email. Existing checklist history stays attached to the same employee row when they sign up with that email.
 
 ## Important notes
 - Data persists in Supabase, so app updates/deploys will not wipe checklist history.
 - Daily reset is handled by `daily_sessions.shift_date`, which keeps old days in history while new days start fresh.
-- Current launch-day security is intentionally loose so the app works fast with PIN-only access. Tighten RLS/auth later.
+- Supabase Auth handles email/password and Google login. Employees are linked to auth users by `employees.email` and `employees.auth_user_id`.
 
 ## What the current app supports
-- PIN login
+- Email/password login
+- Google login
 - Employee management
 - Checklist completion
 - Temperature entry
@@ -37,7 +40,7 @@ Employee checklist webapp for Cold Stone Creamery.
 - Per-item and per-session timestamps
 
 ## Still worth improving after launch
-- real auth / tighter security
+- role-based RLS policies that enforce manager-only admin writes at the database layer
 - better audit log views
 - exports / reports
 - timezone hardening

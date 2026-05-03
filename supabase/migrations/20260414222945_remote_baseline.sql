@@ -1,0 +1,3 @@
+-- Remote baseline migration.
+-- This version is already recorded as applied in the linked Supabase project.
+-- The current full setup SQL lives in ../schema.sql.
