@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { anonKey, authSettingsUrl, supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
@@ -107,6 +107,22 @@ export function AuthProvider({ children }) {
   async function loginWithGoogle() {
     setLoading(true)
     setError(null)
+    try {
+      const settingsRes = await fetch(authSettingsUrl, {
+        headers: { apikey: anonKey }
+      })
+      const settings = await settingsRes.json()
+      if (!settings?.external?.google) {
+        setError('Google login is not enabled in Supabase yet. Use email/password for now.')
+        setLoading(false)
+        return false
+      }
+    } catch {
+      setError('Could not check Google login settings. Try email/password for now.')
+      setLoading(false)
+      return false
+    }
+
     const { error: googleError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

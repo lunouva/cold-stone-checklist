@@ -8,3 +8,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
+export const authSettingsUrl = supabaseUrl ? `${supabaseUrl}/auth/v1/settings` : ''
+export const anonKey = supabaseAnonKey || ''
