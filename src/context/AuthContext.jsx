@@ -1,7 +1,23 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { anonKey, authSettingsUrl, supabase } from '../lib/supabase'
+import { getAuthRedirectUrl, supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
+
+function getOAuthErrorFromUrl() {
+  if (typeof window === 'undefined') return null
+
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const searchParams = new URLSearchParams(window.location.search)
+  const message = hashParams.get('error_description')
+    || searchParams.get('error_description')
+    || hashParams.get('error')
+    || searchParams.get('error')
+
+  if (!message) return null
+
+  window.history.replaceState({}, document.title, window.location.pathname)
+  return message
+}
 
 export function AuthProvider({ children }) {
   const [employee, setEmployee] = useState(null)
@@ -13,6 +29,9 @@ export function AuthProvider({ children }) {
     let mounted = true
 
     async function initAuth() {
+      const redirectError = getOAuthErrorFromUrl()
+      if (redirectError && mounted) setError(redirectError)
+
       const { data } = await supabase.auth.getSession()
       if (!mounted) return
       setAuthUser(data.session?.user || null)
@@ -88,7 +107,8 @@ export function AuthProvider({ children }) {
       email: email.trim(),
       password,
       options: {
-        data: { full_name: name.trim() }
+        data: { full_name: name.trim() },
+        emailRedirectTo: getAuthRedirectUrl()
       }
     })
     if (signUpError) {
@@ -107,26 +127,14 @@ export function AuthProvider({ children }) {
   async function loginWithGoogle() {
     setLoading(true)
     setError(null)
-    try {
-      const settingsRes = await fetch(authSettingsUrl, {
-        headers: { apikey: anonKey }
-      })
-      const settings = await settingsRes.json()
-      if (!settings?.external?.google) {
-        setError('Google login is not enabled in Supabase yet. Use email/password for now.')
-        setLoading(false)
-        return false
-      }
-    } catch {
-      setError('Could not check Google login settings. Try email/password for now.')
-      setLoading(false)
-      return false
-    }
 
     const { error: googleError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: getAuthRedirectUrl(),
+        queryParams: {
+          prompt: 'select_account'
+        }
       }
     })
     if (googleError) {
