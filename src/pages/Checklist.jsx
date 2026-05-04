@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { addOrganizationScope, applyOrganizationScope } from '../lib/organization'
 import { supabase } from '../lib/supabase'
 
 function TempIndicator({ value, min, max }) {
@@ -34,13 +35,14 @@ export default function Checklist() {
     const today = new Date().toISOString().split('T')[0]
 
     // Get checklist
-    const { data: cl } = await supabase
-      .from('checklists')
-      .select('*')
+    const { data: cl } = await applyOrganizationScope(
+      supabase.from('checklists').select('*'),
+      employee
+    )
       .eq('slug', slug)
       .single()
 
-    if (!cl) { navigate('/'); return }
+    if (!cl) { navigate('/app'); return }
     setChecklist(cl)
 
     // Get sections with items
@@ -63,9 +65,10 @@ export default function Checklist() {
     setExpandedSections(expanded)
 
     // Get or create session
-    let { data: sess } = await supabase
-      .from('daily_sessions')
-      .select('*')
+    let { data: sess } = await applyOrganizationScope(
+      supabase.from('daily_sessions').select('*'),
+      employee
+    )
       .eq('checklist_id', cl.id)
       .eq('employee_id', employee.id)
       .eq('shift_date', today)
@@ -74,13 +77,13 @@ export default function Checklist() {
     if (!sess) {
       const { data: newSess } = await supabase
         .from('daily_sessions')
-        .insert({
+        .insert(addOrganizationScope({
           checklist_id: cl.id,
           employee_id: employee.id,
           shift_date: today,
           time_slot: timeSlot || null,
           status: 'in_progress'
-        })
+        }, employee))
         .select()
         .single()
       sess = newSess
@@ -170,7 +173,7 @@ export default function Checklist() {
       .from('daily_sessions')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
       .eq('id', session.id)
-    navigate('/')
+    navigate('/app')
   }
 
   if (loading) {
@@ -190,7 +193,7 @@ export default function Checklist() {
     <div className="max-w-lg mx-auto px-4 pt-4 pb-24">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => navigate('/')} className="p-2 -ml-2 text-csc-brown/50 hover:text-csc-brown">
+        <button onClick={() => navigate('/app')} className="p-2 -ml-2 text-csc-brown/50 hover:text-csc-brown">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -242,7 +245,7 @@ export default function Checklist() {
                               {item.label}
                             </p>
                             <p className="text-[11px] text-csc-brown/40 mt-0.5">
-                              Range: {item.temp_min}°F to {item.temp_max}°F
+                              Range: {item.temp_min}F to {item.temp_max}F
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -250,7 +253,7 @@ export default function Checklist() {
                             <input
                               type="number"
                               inputMode="decimal"
-                              placeholder="°F"
+                              placeholder="F"
                               value={completion?.value || ''}
                               onChange={e => updateTempValue(item, e.target.value)}
                               className="w-20 px-2 py-1.5 text-sm border rounded-lg text-center

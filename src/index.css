@@ -22,3 +22,55 @@ body {
 /* Hide scrollbar on PIN keypad */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.landing-hero-visual {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.landing-preview {
+  position: absolute;
+  right: max(24px, calc((100vw - 1152px) / 2));
+  top: 112px;
+  width: min(46vw, 660px);
+  min-height: 420px;
+}
+
+.landing-preview-board {
+  position: absolute;
+  left: 0;
+  top: 68px;
+  width: min(520px, 86%);
+  overflow: hidden;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 60px rgba(7, 89, 133, 0.18);
+}
+
+.landing-preview-phone {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 178px;
+  overflow: hidden;
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 28px 70px rgba(74, 44, 42, 0.22);
+}
+
+@media (max-width: 1023px) {
+  .landing-preview {
+    opacity: 0.2;
+    right: -140px;
+    width: 720px;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-preview {
+    display: none;
+  }
+}

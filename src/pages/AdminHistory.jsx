@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { applyOrganizationScope } from '../lib/organization'
 import { supabase } from '../lib/supabase'
 
 export default function AdminHistory() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { employee } = useAuth()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0])
@@ -15,9 +18,10 @@ export default function AdminHistory() {
 
   async function loadHistory() {
     setLoading(true)
-    const { data } = await supabase
-      .from('daily_sessions')
-      .select('*, checklists(name, slug), employees!daily_sessions_employee_id_fkey(name)')
+    const { data } = await applyOrganizationScope(
+      supabase.from('daily_sessions').select('*, checklists(name, slug), employees!daily_sessions_employee_id_fkey(name)'),
+      employee
+    )
       .eq('shift_date', dateFilter)
       .order('completed_at', { ascending: false })
 
@@ -43,7 +47,7 @@ export default function AdminHistory() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-4">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/admin')} className="p-2 -ml-2 text-csc-brown/50 hover:text-csc-brown">
+        <button onClick={() => navigate('/app/admin')} className="p-2 -ml-2 text-csc-brown/50 hover:text-csc-brown">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -105,7 +109,7 @@ export default function AdminHistory() {
                               ? 'bg-green-500' : 'bg-red-500'
                           }`} />
                           <span className="text-csc-brown/70 flex-1">{comp.checklist_items?.label}</span>
-                          <span className="font-medium">{comp.value}°F</span>
+                          <span className="font-medium">{comp.value}F</span>
                         </>
                       ) : (
                         <>

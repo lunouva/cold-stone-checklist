@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { addOrganizationScope, applyOrganizationScope } from '../lib/organization'
 import { supabase } from '../lib/supabase'
 
 export default function AdminAssign() {
@@ -18,9 +19,9 @@ export default function AdminAssign() {
     const today = new Date().toISOString().split('T')[0]
 
     const [clRes, empRes, sessRes] = await Promise.all([
-      supabase.from('checklists').select('*').order('sort_order'),
-      supabase.from('employees').select('*').eq('is_active', true).order('name'),
-      supabase.from('daily_sessions').select('*, employees!daily_sessions_employee_id_fkey(name)').eq('shift_date', today)
+      applyOrganizationScope(supabase.from('checklists').select('*'), currentUser).order('sort_order'),
+      applyOrganizationScope(supabase.from('employees').select('*'), currentUser).eq('is_active', true).order('name'),
+      applyOrganizationScope(supabase.from('daily_sessions').select('*, employees!daily_sessions_employee_id_fkey(name)'), currentUser).eq('shift_date', today)
     ])
 
     setChecklists(clRes.data || [])
@@ -39,13 +40,13 @@ export default function AdminAssign() {
 
     const { data } = await supabase
       .from('daily_sessions')
-      .insert({
+      .insert(addOrganizationScope({
         checklist_id: checklistId,
         employee_id: employeeId,
         assigned_by: currentUser.id,
         shift_date: today,
         status: 'in_progress'
-      })
+      }, currentUser))
       .select('*, employees!daily_sessions_employee_id_fkey(name)')
       .single()
 
@@ -68,7 +69,7 @@ export default function AdminAssign() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-4">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/admin')} className="p-2 -ml-2 text-csc-brown/50 hover:text-csc-brown">
+        <button onClick={() => navigate('/app/admin')} className="p-2 -ml-2 text-csc-brown/50 hover:text-csc-brown">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>

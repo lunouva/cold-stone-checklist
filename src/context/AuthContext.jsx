@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { getAuthRedirectUrl, supabase } from '../lib/supabase'
+import { getAuthRedirectUrl, isPlatformAdminEmail, supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
@@ -70,18 +70,17 @@ export function AuthProvider({ children }) {
       const emp = Array.isArray(data) ? data[0] : data
       if (!emp || !emp.is_active) {
         setEmployee(null)
-        setError('No active employee profile found for this login.')
         setLoading(false)
-        return false
+        return null
       }
       setEmployee(emp)
       setLoading(false)
-      return true
+      return emp
     } catch (err) {
       setEmployee(null)
       setError(err.message || 'Could not load employee profile')
       setLoading(false)
-      return false
+      return null
     }
   }
 
@@ -100,7 +99,7 @@ export function AuthProvider({ children }) {
     return true
   }
 
-  async function signUpWithPassword({ name, email, password }) {
+  async function signUpWithPassword({ name, email, password, redirectPath = '/auth/callback?next=/onboarding' }) {
     setLoading(true)
     setError(null)
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -108,7 +107,7 @@ export function AuthProvider({ children }) {
       password,
       options: {
         data: { full_name: name.trim() },
-        emailRedirectTo: getAuthRedirectUrl()
+        emailRedirectTo: getAuthRedirectUrl(redirectPath)
       }
     })
     if (signUpError) {
@@ -125,13 +124,17 @@ export function AuthProvider({ children }) {
   }
 
   async function loginWithGoogle() {
+    return loginWithGoogleRedirect('/auth/callback')
+  }
+
+  async function loginWithGoogleRedirect(nextPath = '/auth/callback') {
     setLoading(true)
     setError(null)
 
     const { error: googleError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: getAuthRedirectUrl(),
+        redirectTo: getAuthRedirectUrl(nextPath),
         queryParams: {
           prompt: 'select_account'
         }
@@ -152,6 +155,8 @@ export function AuthProvider({ children }) {
   }
 
   const isManager = employee?.role === 'manager' || employee?.role === 'owner'
+  const isOwner = employee?.role === 'owner'
+  const isPlatformAdmin = isPlatformAdminEmail(authUser?.email)
 
   return (
     <AuthContext.Provider value={{
@@ -160,10 +165,14 @@ export function AuthProvider({ children }) {
       loginWithPassword,
       signUpWithPassword,
       loginWithGoogle,
+      loginWithGoogleRedirect,
       logout,
+      refreshEmployee: loadEmployee,
       loading,
       error,
-      isManager
+      isManager,
+      isOwner,
+      isPlatformAdmin
     }}>
       {children}
     </AuthContext.Provider>

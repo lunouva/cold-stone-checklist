@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { addOrganizationScope, applyOrganizationScope } from '../lib/organization'
 import { supabase } from '../lib/supabase'
 
 const CHECKLIST_ICONS = {
-  'manager-walk': '🌡️',
-  'back-room-closer': '🧹',
-  'lobby-closer': '🪣',
-  'stone-closer': '🪨',
-  'key-closer': '🔑'
+  'manager-walk': 'MW',
+  'back-room-closer': 'BR',
+  'lobby-closer': 'LB',
+  'stone-closer': 'ST',
+  'key-closer': 'KC'
 }
 
 export default function Home() {
@@ -29,9 +30,9 @@ export default function Home() {
     const today = new Date().toISOString().split('T')[0]
 
     const [checklistRes, sessionRes, assignRes] = await Promise.all([
-      supabase.from('checklists').select('*').order('sort_order'),
-      supabase.from('daily_sessions').select('*, employees!daily_sessions_employee_id_fkey(name)').eq('shift_date', today),
-      supabase.from('daily_sessions').select('*').eq('shift_date', today).eq('employee_id', employee.id)
+      applyOrganizationScope(supabase.from('checklists').select('*'), employee).order('sort_order'),
+      applyOrganizationScope(supabase.from('daily_sessions').select('*, employees!daily_sessions_employee_id_fkey(name)'), employee).eq('shift_date', today),
+      applyOrganizationScope(supabase.from('daily_sessions').select('*'), employee).eq('shift_date', today).eq('employee_id', employee.id)
     ])
 
     setChecklists(checklistRes.data || [])
@@ -61,20 +62,18 @@ export default function Home() {
     const today = new Date().toISOString().split('T')[0]
     const existing = getMySession(checklist.id)
     if (existing) {
-      navigate(`/checklist/${checklist.slug}`)
+      navigate(`/app/checklist/${checklist.slug}`)
       return
     }
 
-    const { data, error } = await supabase.from('daily_sessions').insert({
+    const { error } = await supabase.from('daily_sessions').insert(addOrganizationScope({
       checklist_id: checklist.id,
       employee_id: employee.id,
       shift_date: today,
       status: 'in_progress'
-    }).select().single()
+    }, employee)).select().single()
 
-    if (!error) {
-      navigate(`/checklist/${checklist.slug}`)
-    }
+    if (!error) navigate(`/app/checklist/${checklist.slug}`)
   }
 
   if (loading) {
@@ -102,18 +101,18 @@ export default function Home() {
           const mySession = getMySession(cl.id)
           const anySession = getSessionForChecklist(cl.id)
           const isAssigned = !!mySession
-          const icon = CHECKLIST_ICONS[cl.slug] || '📋'
+          const icon = CHECKLIST_ICONS[cl.slug] || 'CL'
 
           return (
             <button
               key={cl.id}
               onClick={() => startChecklist(cl)}
-              className={`w-full text-left bg-white rounded-xl p-4 shadow-sm border-2 transition-all
+              className={`w-full text-left bg-white rounded-lg p-4 shadow-sm border-2 transition-all
                 ${isAssigned ? 'border-csc-gold' : 'border-transparent'}
                 hover:shadow-md active:scale-[0.98]`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{icon}</span>
+                <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg bg-csc-red/10 text-xs font-black text-csc-red">{icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-csc-brown truncate">{cl.name}</h3>

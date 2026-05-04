@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { applyOrganizationScope } from '../lib/organization'
 import { supabase } from '../lib/supabase'
 
 export default function Admin() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { employee, isPlatformAdmin } = useAuth()
   const [overview, setOverview] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -16,15 +19,15 @@ export default function Admin() {
     setLoading(true)
     const today = new Date().toISOString().split('T')[0]
 
-    const { data: checklists } = await supabase
-      .from('checklists')
-      .select('*')
-      .order('sort_order')
+    const { data: checklists } = await applyOrganizationScope(
+      supabase.from('checklists').select('*'),
+      employee
+    ).order('sort_order')
 
-    const { data: sessions } = await supabase
-      .from('daily_sessions')
-      .select('*, employees!daily_sessions_employee_id_fkey(name)')
-      .eq('shift_date', today)
+    const { data: sessions } = await applyOrganizationScope(
+      supabase.from('daily_sessions').select('*, employees!daily_sessions_employee_id_fkey(name)'),
+      employee
+    ).eq('shift_date', today)
 
     const combined = (checklists || []).map(cl => {
       const clSessions = (sessions || []).filter(s => s.checklist_id === cl.id)
@@ -53,6 +56,12 @@ export default function Admin() {
     in_progress: 'In Progress',
     not_started: 'Not Started'
   }
+  const quickLinks = [
+    { label: 'Employees', path: '/app/admin/employees', icon: 'Team' },
+    { label: 'History', path: '/app/admin/history', icon: 'Log' },
+    { label: 'Assign', path: '/app/admin/assign', icon: 'Plan' },
+    ...(isPlatformAdmin ? [{ label: 'Orgs', path: '/app/admin/organizations', icon: 'HQ' }] : [])
+  ]
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -62,25 +71,19 @@ export default function Admin() {
       <h1 className="text-2xl font-bold text-csc-brown mb-1">Admin Dashboard</h1>
       <p className="text-csc-brown/60 text-sm mb-6">{dateStr}</p>
 
-      {/* Quick links */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: 'Employees', path: '/admin/employees', icon: '👥' },
-          { label: 'History', path: '/admin/history', icon: '📊' },
-          { label: 'Assign', path: '/admin/assign', icon: '📋' },
-        ].map(link => (
+      <div className={`grid gap-3 mb-6 ${quickLinks.length === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        {quickLinks.map(link => (
           <button
             key={link.path}
             onClick={() => navigate(link.path)}
-            className="bg-white rounded-xl p-4 shadow-sm text-center hover:shadow-md active:scale-[0.98] transition-all"
+            className="bg-white rounded-lg p-4 shadow-sm text-center hover:shadow-md active:scale-[0.98] transition-all"
           >
-            <span className="text-2xl">{link.icon}</span>
+            <span className="text-sm font-black text-csc-red">{link.icon}</span>
             <p className="text-xs font-medium text-csc-brown mt-1">{link.label}</p>
           </button>
         ))}
       </div>
 
-      {/* Today's overview */}
       <h2 className="text-sm font-semibold text-csc-brown/50 uppercase tracking-wider mb-3">Today's Status</h2>
 
       {loading ? (
@@ -90,7 +93,7 @@ export default function Admin() {
       ) : (
         <div className="space-y-3">
           {overview.map(cl => (
-            <div key={cl.id} className="bg-white rounded-xl p-4 shadow-sm">
+            <div key={cl.id} className="bg-white rounded-lg p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-csc-brown">{cl.name}</h3>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[cl.status]}`}>
