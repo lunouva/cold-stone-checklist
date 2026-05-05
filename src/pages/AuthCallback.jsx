@@ -32,7 +32,7 @@ export default function AuthCallback() {
 
       try {
         if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href)
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
           if (exchangeError) throw exchangeError
         } else {
           await supabase.auth.getSession()

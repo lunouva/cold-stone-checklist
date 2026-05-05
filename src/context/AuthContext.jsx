@@ -2,6 +2,36 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import { getAuthRedirectUrl, isPlatformAdminEmail, supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
+const EMPLOYEE_LOAD_TIMEOUT_MS = 10000
+
+function withTimeout(promise, timeoutMs, message) {
+  let timeoutId
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs)
+  })
+
+  return Promise.race([promise, timeout]).finally(() => {
+    window.clearTimeout(timeoutId)
+  })
+}
+
+function cleanOAuthParams() {
+  const url = new URL(window.location.href)
+  const params = ['code', 'error', 'error_code', 'error_description', 'state']
+  let changed = false
+
+  params.forEach(param => {
+    if (url.searchParams.has(param)) {
+      url.searchParams.delete(param)
+      changed = true
+    }
+  })
+
+  if (changed) {
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`
+    window.history.replaceState({}, document.title, nextUrl)
+  }
+}
 
 function getOAuthErrorFromUrl() {
   if (typeof window === 'undefined') return null
@@ -29,16 +59,38 @@ export function AuthProvider({ children }) {
     let mounted = true
 
     async function initAuth() {
-      const redirectError = getOAuthErrorFromUrl()
+      setLoading(true)
+      const isCallbackRoute = window.location.pathname === '/auth/callback'
+      const redirectError = isCallbackRoute ? null : getOAuthErrorFromUrl()
       if (redirectError && mounted) setError(redirectError)
 
-      const { data } = await supabase.auth.getSession()
-      if (!mounted) return
-      setAuthUser(data.session?.user || null)
-      if (data.session?.user) {
-        await loadEmployee()
-      } else {
+      try {
+        const url = new URL(window.location.href)
+        const oauthCode = url.searchParams.get('code')
+
+        if (oauthCode && !isCallbackRoute) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(oauthCode)
+          if (exchangeError) throw exchangeError
+          cleanOAuthParams()
+        }
+
+        const { data, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw sessionError
+        if (!mounted) return
+
+        setAuthUser(data.session?.user || null)
+        if (data.session?.user) {
+          await loadEmployee()
+        } else {
+          setEmployee(null)
+          setLoading(false)
+        }
+      } catch (err) {
+        if (!mounted) return
+        cleanOAuthParams()
+        setAuthUser(null)
         setEmployee(null)
+        setError(err.message || 'Could not finish login. Please try again.')
         setLoading(false)
       }
     }
@@ -47,12 +99,14 @@ export function AuthProvider({ children }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthUser(session?.user || null)
-      if (session?.user) {
-        loadEmployee()
-      } else {
-        setEmployee(null)
-        setLoading(false)
-      }
+      window.setTimeout(() => {
+        if (session?.user) {
+          loadEmployee()
+        } else {
+          setEmployee(null)
+          setLoading(false)
+        }
+      }, 0)
     })
 
     return () => {
@@ -65,7 +119,11 @@ export function AuthProvider({ children }) {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: rpcError } = await supabase.rpc('get_current_employee')
+      const { data, error: rpcError } = await withTimeout(
+        supabase.rpc('get_current_employee'),
+        EMPLOYEE_LOAD_TIMEOUT_MS,
+        'Login worked, but the employee profile did not load. Please refresh and try again.'
+      )
       if (rpcError) throw rpcError
       const emp = Array.isArray(data) ? data[0] : data
       if (!emp || !emp.is_active) {
@@ -87,7 +145,7 @@ export function AuthProvider({ children }) {
   async function loginWithPassword(email, password) {
     setLoading(true)
     setError(null)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password
     })
@@ -96,7 +154,8 @@ export function AuthProvider({ children }) {
       setLoading(false)
       return false
     }
-    return true
+    setAuthUser(data.user || null)
+    return loadEmployee()
   }
 
   async function signUpWithPassword({ name, email, password, redirectPath = '/auth/callback?next=/onboarding' }) {
@@ -120,7 +179,8 @@ export function AuthProvider({ children }) {
       setLoading(false)
       return false
     }
-    return true
+    setAuthUser(data.user || null)
+    return loadEmployee()
   }
 
   async function loginWithGoogle() {
