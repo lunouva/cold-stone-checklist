@@ -16,7 +16,7 @@ function trimTrailingSlash(url) {
 export function getAuthRedirectUrl(path = '/auth/callback') {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const browserOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-  const origin = browserOrigin || configuredSiteUrl || ''
+  const origin = configuredSiteUrl || browserOrigin || ''
 
   if (!origin) return normalizedPath
   return `${trimTrailingSlash(origin)}${normalizedPath}`
